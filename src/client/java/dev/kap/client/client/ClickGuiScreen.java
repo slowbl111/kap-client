@@ -1,106 +1,160 @@
 
 package dev.kap.client.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStack;
+import org.lwjgl.glfw.GLFW;
 
-public class ClickGuiScreen extends Screen {
-    private static final int BLUE = 0xFF258BFF;
-    private static final int PANEL = 0xF0101726;
-    private static final int ROW = 0xFF1B2638;
+public class KapClientClient implements ClientModInitializer {
+    private static final String MOD_ID = "kap_client";
 
-    public ClickGuiScreen() {
-        super(Component.literal("Kap Client"));
-    }
+    private static boolean hud = true;
+    private static boolean keystrokes = true;
+    private static boolean fps = true;
+    private static boolean coordinates = true;
+    private static boolean zoom = false;
+    private static boolean armor = true;
+
+    private static KeyMapping openMenu;
+    private static Integer previousFov = null;
 
     @Override
-    protected void init() {
-        int panelWidth = 360;
-        int panelHeight = 270;
-        int left = (this.width - panelWidth) / 2;
-        int top = (this.height - panelHeight) / 2;
+    public void onInitializeClient() {
+        KeyMapping.Category category = KeyMapping.Category.register(
+            Identifier.fromNamespaceAndPath(MOD_ID, "main")
+        );
 
-        int buttonX = left + 145;
-        int buttonWidth = 195;
-        int buttonY = top + 48;
+        openMenu = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+            "key.kap_client.open_menu",
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_RIGHT_SHIFT,
+            category
+        ));
 
-        addRenderableWidget(moduleButton(
-            "HUD", "hud", buttonX, buttonY, buttonWidth));
-        addRenderableWidget(moduleButton(
-            "Keystrokes", "keystrokes", buttonX, buttonY + 30, buttonWidth));
-        addRenderableWidget(moduleButton(
-            "FPS Counter", "fps", buttonX, buttonY + 60, buttonWidth));
-        addRenderableWidget(moduleButton(
-            "Coordinates", "coordinates", buttonX, buttonY + 90, buttonWidth));
-        addRenderableWidget(moduleButton(
-            "Zoom", "zoom", buttonX, buttonY + 120, buttonWidth));
-        addRenderableWidget(moduleButton(
-            "Armor Status", "armor", buttonX, buttonY + 150, buttonWidth));
-
-        addRenderableWidget(Button.builder(
-            Component.literal("Close Menu"),
-            button -> Minecraft.getInstance().setScreen(null)
-        ).bounds(buttonX, buttonY + 190, buttonWidth, 22).build());
-    }
-
-    private Button moduleButton(
-        String label, String id, int x, int y, int width
-    ) {
-        return Button.builder(
-            buttonText(label, id),
-            button -> {
-                KapClientClient.toggleModule(id);
-                button.setMessage(buttonText(label, id));
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            while (openMenu.consumeClick()) {
+                if (client.screen instanceof ClickGuiScreen) {
+                    client.setScreen(null);
+                } else if (client.screen == null) {
+                    client.setScreen(new ClickGuiScreen());
+                }
             }
-        ).bounds(x, y, width, 24).build();
-    }
 
-    private Component buttonText(String label, String id) {
-        return Component.literal(
-            label + "  [" +
-            (KapClientClient.isEnabled(id) ? "ON" : "OFF") + "]"
+            if (zoom) {
+                if (previousFov == null) {
+                    previousFov = client.options.fov().get();
+                }
+                client.options.fov().set(30);
+            } else if (previousFov != null) {
+                client.options.fov().set(previousFov);
+                previousFov = null;
+            }
+        });
+
+        HudElementRegistry.addLast(
+            Identifier.fromNamespaceAndPath(MOD_ID, "client_hud"),
+            (graphics, deltaTracker) -> renderHud(
+                Minecraft.getInstance(), graphics
+            )
         );
     }
 
-    @Override
-    public void render(
-        GuiGraphics graphics, int mouseX, int mouseY, float partialTick
+    public static boolean isEnabled(String id) {
+        return switch (id) {
+            case "hud" -> hud;
+            case "keystrokes" -> keystrokes;
+            case "fps" -> fps;
+            case "coordinates" -> coordinates;
+            case "zoom" -> zoom;
+            case "armor" -> armor;
+            default -> false;
+        };
+    }
+
+    public static void toggleModule(String id) {
+        switch (id) {
+            case "hud" -> hud = !hud;
+            case "keystrokes" -> keystrokes = !keystrokes;
+            case "fps" -> fps = !fps;
+            case "coordinates" -> coordinates = !coordinates;
+            case "zoom" -> zoom = !zoom;
+            case "armor" -> armor = !armor;
+        }
+    }
+
+    private static void renderHud(
+        Minecraft client, GuiGraphics graphics
     ) {
-        int left = (this.width - 360) / 2;
-        int top = (this.height - 270) / 2;
+        if (!hud || client.player == null || client.options.hideGui) {
+            return;
+        }
 
-        graphics.fill(0, 0, this.width, this.height, 0x99000000);
-        graphics.fill(left, top, left + 360, top + 270, PANEL);
-        graphics.fill(left, top, left + 360, top + 3, BLUE);
-        graphics.fill(left + 12, top + 40, left + 125, top + 258, ROW);
+        int x = 8;
+        int y = 8;
+        int blue = 0xFF55AAFF;
+        int white = 0xFFFFFFFF;
 
-        graphics.drawString(
-            this.font, "KAP CLIENT", left + 16, top + 14, 0xFFFFFFFF
-        );
-        graphics.drawString(
-            this.font, "1.21.11  |  CLIENT MENU",
-            left + 145, top + 27, 0xFF80BFFF
-        );
-        graphics.drawString(
-            this.font, "MODULES", left + 22, top + 52, BLUE
-        );
-        graphics.drawString(
-            this.font, "Blue Edition",
-            left + 22, top + 76, 0xFFFFFFFF
-        );
-        graphics.drawString(
-            this.font, "Right Shift",
-            left + 22, top + 96, 0xFF9CAFC8
-        );
+        graphics.fill(x - 4, y - 4, x + 155, y + 15, 0xAA101B2B);
+        graphics.fill(x - 4, y - 4, x - 1, y + 15, blue);
+        graphics.drawString(client.font, "KAP CLIENT", x + 3, y, blue);
+        y += 23;
 
-        super.render(graphics, mouseX, mouseY, partialTick);
+        if (fps) {
+            drawLine(graphics, client, "FPS: " + client.getFps(),
+                x, y, white);
+            y += 12;
+        }
+
+        if (coordinates) {
+            var player = client.player;
+            drawLine(graphics, client,
+                String.format("XYZ: %.1f / %.1f / %.1f",
+                    player.getX(), player.getY(), player.getZ()),
+                x, y, white);
+            y += 12;
+        }
+
+        if (keystrokes) {
+            var options = client.options;
+            String keys =
+                (options.keyUp.isDown() ? "[W]" : " W ") + " " +
+                (options.keyLeft.isDown() ? "[A]" : " A ") + " " +
+                (options.keyDown.isDown() ? "[S]" : " S ") + " " +
+                (options.keyRight.isDown() ? "[D]" : " D ");
+            graphics.fill(x - 3, y - 3, x + 115, y + 12, 0xAA101B2B);
+            drawLine(graphics, client, keys, x, y, blue);
+            y += 18;
+        }
+
+        if (armor) {
+            int equipped = 0;
+            for (ItemStack stack : client.player.getArmorSlots()) {
+                if (!stack.isEmpty()) {
+                    equipped++;
+                }
+            }
+            drawLine(graphics, client,
+                "Armor pieces: " + equipped + "/4", x, y, white);
+        }
     }
 
-    @Override
-    public boolean isPauseScreen() {
-        return false;
+    private static void drawLine(
+        GuiGraphics graphics,
+        Minecraft client,
+        String text,
+        int x,
+        int y,
+        int color
+    ) {
+        graphics.drawString(client.font, text, x, y, color);
     }
 }
