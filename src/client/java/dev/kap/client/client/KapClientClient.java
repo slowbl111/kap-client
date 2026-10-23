@@ -136,25 +136,18 @@ public class KapClientClient implements ClientModInitializer {
         }
 
         if (armor) {
-         int equipped = 0;
-for (ItemStack stack : client.player.getInventory().armor) {
-    if (!stack.isEmpty()) {
+int equipped = 0;
+
+for (var slot : new net.minecraft.world.entity.EquipmentSlot[] {
+    net.minecraft.world.entity.EquipmentSlot.HEAD,
+    net.minecraft.world.entity.EquipmentSlot.CHEST,
+    net.minecraft.world.entity.EquipmentSlot.LEGS,
+    net.minecraft.world.entity.EquipmentSlot.FEET
+}) {
+    if (!client.player.getItemBySlot(slot).isEmpty()) {
         equipped++;
     }
 }
-            drawLine(graphics, client,
-                "Armor pieces: " + equipped + "/4", x, y, white);
-        }
-    }
 
-    private static void drawLine(
-        GuiGraphics graphics,
-        Minecraft client,
-        String text,
-        int x,
-        int y,
-        int color
-    ) {
-        graphics.drawString(client.font, text, x, y, color);
-    }
-}
+drawLine(graphics, client, "Armor pieces: " + equipped + "/4",
+    x, y, white);
