@@ -11,10 +11,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.EquipmentSlot;
 import org.lwjgl.glfw.GLFW;
 
 public class KapClientClient implements ClientModInitializer {
+
     private static final String MOD_ID = "kap_client";
 
     private static boolean hud = true;
@@ -33,12 +34,14 @@ public class KapClientClient implements ClientModInitializer {
             Identifier.fromNamespaceAndPath(MOD_ID, "main")
         );
 
-        openMenu = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.kap_client.open_menu",
-            InputConstants.Type.KEYSYM,
-            GLFW.GLFW_KEY_RIGHT_SHIFT,
-            category
-        ));
+        openMenu = KeyBindingHelper.registerKeyBinding(
+            new KeyMapping(
+                "key.kap_client.open_menu",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_RIGHT_SHIFT,
+                category
+            )
+        );
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             while (openMenu.consumeClick()) {
@@ -49,10 +52,11 @@ public class KapClientClient implements ClientModInitializer {
                 }
             }
 
-            if (zoom) {
+            if (zoom && client.player != null) {
                 if (previousFov == null) {
                     previousFov = client.options.fov().get();
                 }
+
                 client.options.fov().set(30);
             } else if (previousFov != null) {
                 client.options.fov().set(previousFov);
@@ -62,9 +66,8 @@ public class KapClientClient implements ClientModInitializer {
 
         HudElementRegistry.addLast(
             Identifier.fromNamespaceAndPath(MOD_ID, "client_hud"),
-            (graphics, deltaTracker) -> renderHud(
-                Minecraft.getInstance(), graphics
-            )
+            (graphics, deltaTracker) ->
+                renderHud(Minecraft.getInstance(), graphics)
         );
     }
 
@@ -92,7 +95,8 @@ public class KapClientClient implements ClientModInitializer {
     }
 
     private static void renderHud(
-        Minecraft client, GuiGraphics graphics
+        Minecraft client,
+        GuiGraphics graphics
     ) {
         if (!hud || client.player == null || client.options.hideGui) {
             return;
@@ -103,54 +107,123 @@ public class KapClientClient implements ClientModInitializer {
         int blue = 0xFF55AAFF;
         int white = 0xFFFFFFFF;
 
-        graphics.fill(x - 4, y - 4, x + 155, y + 15, 0xAA101B2B);
-        graphics.fill(x - 4, y - 4, x - 1, y + 15, blue);
-        graphics.drawString(client.font, "KAP CLIENT", x + 3, y, blue);
+        // Header
+        graphics.fill(
+            x - 4, y - 4,
+            x + 155, y + 15,
+            0xAA101B2B
+        );
+
+        graphics.fill(
+            x - 4, y - 4,
+            x - 1, y + 15,
+            blue
+        );
+
+        graphics.drawString(
+            client.font,
+            "KAP CLIENT",
+            x + 3, y,
+            blue
+        );
+
         y += 23;
 
+        // FPS counter
         if (fps) {
-            drawLine(graphics, client, "FPS: " + client.getFps(),
-                x, y, white);
+            drawLine(
+                graphics, client,
+                "FPS: " + client.getFps(),
+                x, y, white
+            );
             y += 12;
         }
 
+        // Coordinates
         if (coordinates) {
             var player = client.player;
-            drawLine(graphics, client,
-                String.format("XYZ: %.1f / %.1f / %.1f",
-                    player.getX(), player.getY(), player.getZ()),
-                x, y, white);
+
+            String coords = String.format(
+                java.util.Locale.ROOT,
+                "XYZ: %.1f / %.1f / %.1f",
+                player.getX(),
+                player.getY(),
+                player.getZ()
+            );
+
+            drawLine(
+                graphics, client,
+                coords,
+                x, y, white
+            );
+
             y += 12;
         }
 
+        // WASD keystrokes
         if (keystrokes) {
             var options = client.options;
+
             String keys =
                 (options.keyUp.isDown() ? "[W]" : " W ") + " " +
                 (options.keyLeft.isDown() ? "[A]" : " A ") + " " +
                 (options.keyDown.isDown() ? "[S]" : " S ") + " " +
                 (options.keyRight.isDown() ? "[D]" : " D ");
-            graphics.fill(x - 3, y - 3, x + 115, y + 12, 0xAA101B2B);
-            drawLine(graphics, client, keys, x, y, blue);
+
+            graphics.fill(
+                x - 3, y - 3,
+                x + 115, y + 12,
+                0xAA101B2B
+            );
+
+            drawLine(
+                graphics, client,
+                keys,
+                x, y, blue
+            );
+
             y += 18;
         }
 
+        // Armor status
         if (armor) {
-int equipped = 0;
+            int equipped = 0;
 
-for (var slot : new net.minecraft.world.entity.EquipmentSlot[] {
-    net.minecraft.world.entity.EquipmentSlot.HEAD,
-    net.minecraft.world.entity.EquipmentSlot.CHEST,
-    net.minecraft.world.entity.EquipmentSlot.LEGS,
-    net.minecraft.world.entity.EquipmentSlot.FEET
-}) {
-    if (!client.player.getItemBySlot(slot).isEmpty()) {
-        equipped++;
+            EquipmentSlot[] armorSlots = {
+                EquipmentSlot.HEAD,
+                EquipmentSlot.CHEST,
+                EquipmentSlot.LEGS,
+                EquipmentSlot.FEET
+            };
+
+            for (EquipmentSlot slot : armorSlots) {
+                if (!client.player.getItemBySlot(slot).isEmpty()) {
+                    equipped++;
+                }
+            }
+
+            drawLine(
+                graphics, client,
+                "Armor pieces: " + equipped + "/4",
+                x, y, white
+            );
+        }
     }
-}
 
-drawLine(graphics, client, "Armor pieces: " + equipped + "/4",
-x, y, white);
-       }
+    // Draws a line of HUD text
+    private static void drawLine(
+        GuiGraphics graphics,
+        Minecraft client,
+        String text,
+        int x,
+        int y,
+        int color
+    ) {
+        graphics.drawString(
+            client.font,
+            text,
+            x, y,
+            color
+        );
     }
 }
