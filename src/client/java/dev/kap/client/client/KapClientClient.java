@@ -150,4 +150,7 @@ for (var slot : new net.minecraft.world.entity.EquipmentSlot[] {
 }
 
 drawLine(graphics, client, "Armor pieces: " + equipped + "/4",
-    x, y, white);
+x, y, white);
+       }
+    }
+}
