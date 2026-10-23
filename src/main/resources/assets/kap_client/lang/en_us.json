@@ -1,0 +1,8 @@
+
+{
+  "category.kap_client": "Kap Client",
+  "key.kap_client.toggle_hud": "Toggle HUD",
+  "key.kap_client.toggle_builder": "Toggle Builder Prototype",
+  "key.kap_client.toggle_miner": "Toggle Miner Prototype",
+  "key.kap_client.toggle_miner_3x3": "Toggle 3x3 Miner Prototype"
+}
