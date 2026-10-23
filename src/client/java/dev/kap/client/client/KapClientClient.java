@@ -4,84 +4,54 @@ package dev.kap.client.client;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.text.Text;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import org.lwjgl.glfw.GLFW;
 
 public class KapClientClient implements ClientModInitializer {
-    private static KeyBinding toggleHud;
-    private static KeyBinding toggleBuilder;
-    private static KeyBinding toggleMiner;
-    private static KeyBinding toggleMiner3x3;
-
-    private static boolean hudEnabled = true;
-    private static boolean builderEnabled = false;
-    private static boolean minerEnabled = false;
-    private static boolean miner3x3Enabled = false;
+    private static KeyMapping toggleHud;
+    private static KeyMapping toggleBuilder;
+    private static KeyMapping toggleMiner;
+    private static KeyMapping toggleMiner3x3;
 
     @Override
     public void onInitializeClient() {
-        toggleHud = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.kap_client.toggle_hud",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_H,
-            "category.kap_client"
-        ));
-
-        toggleBuilder = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.kap_client.toggle_builder",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_B,
-            "category.kap_client"
-        ));
-
-        toggleMiner = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.kap_client.toggle_miner",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_N,
-            "category.kap_client"
-        ));
-
-        toggleMiner3x3 = KeyBindingHelper.registerKeyBinding(new KeyBinding(
-            "key.kap_client.toggle_miner_3x3",
-            InputUtil.Type.KEYSYM,
-            GLFW.GLFW_KEY_M,
-            "category.kap_client"
-        ));
+        toggleHud = registerKey("toggle_hud", GLFW.GLFW_KEY_H);
+        toggleBuilder = registerKey("toggle_builder", GLFW.GLFW_KEY_B);
+        toggleMiner = registerKey("toggle_miner", GLFW.GLFW_KEY_N);
+        toggleMiner3x3 = registerKey("toggle_miner_3x3", GLFW.GLFW_KEY_M);
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
-            while (toggleHud.wasPressed()) {
-                hudEnabled = !hudEnabled;
-                notify(client, "HUD", hudEnabled);
+            while (toggleHud.consumeClick()) {
+                notify(client, "HUD");
             }
-
-            while (toggleBuilder.wasPressed()) {
-                builderEnabled = !builderEnabled;
-                notify(client, "Builder prototype", builderEnabled);
+            while (toggleBuilder.consumeClick()) {
+                notify(client, "Builder prototype");
             }
-
-            while (toggleMiner.wasPressed()) {
-                minerEnabled = !minerEnabled;
-                notify(client, "Miner prototype", minerEnabled);
+            while (toggleMiner.consumeClick()) {
+                notify(client, "Miner prototype");
             }
-
-            while (toggleMiner3x3.wasPressed()) {
-                miner3x3Enabled = !miner3x3Enabled;
-                notify(client, "3x3 Miner prototype", miner3x3Enabled);
+            while (toggleMiner3x3.consumeClick()) {
+                notify(client, "3x3 Miner prototype");
             }
         });
     }
 
-    private static void notify(
-        net.minecraft.client.MinecraftClient client,
-        String feature,
-        boolean enabled
-    ) {
+    private static KeyMapping registerKey(String name, int key) {
+        return KeyBindingHelper.registerKeyBinding(new KeyMapping(
+            "key.kap_client." + name,
+            key,
+            KeyMapping.Category.MISC
+        ));
+    }
+
+    private static void notify(Minecraft client, String feature) {
         if (client.player != null) {
-            client.player.sendMessage(
-                Text.literal("Kap Client: " + feature + " " +
-                    (enabled ? "enabled" : "disabled")),
+            client.player.displayClientMessage(
+                Component.literal("Kap Client: " + feature + " key pressed"),
                 true
             );
         }
