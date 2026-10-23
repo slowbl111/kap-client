@@ -137,11 +137,11 @@ public class KapClientClient implements ClientModInitializer {
 
         if (armor) {
             int equipped = 0;
-            for (ItemStack stack : client.player.getArmorSlots()) {
-                if (!stack.isEmpty()) {
-                    equipped++;
-                }
-            }
+for (int slot = 0; slot < 4; slot++) {
+    if (!client.player.getInventory().getArmor(slot).isEmpty()) {
+        equipped++;
+    }
+}
             drawLine(graphics, client,
                 "Armor pieces: " + equipped + "/4", x, y, white);
         }
